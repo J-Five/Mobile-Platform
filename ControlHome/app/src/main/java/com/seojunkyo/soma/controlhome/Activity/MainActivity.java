@@ -8,14 +8,21 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.ImageButton;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
 import com.seojunkyo.soma.controlhome.R;
 import com.seojunkyo.soma.controlhome.ui.CONTROLHOMEActivity;
 import com.seojunkyo.soma.controlhome.util.MQTTUtils;
 
+import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
+import org.eclipse.paho.client.mqttv3.MqttCallback;
+import org.eclipse.paho.client.mqttv3.MqttClient;
+
 public class MainActivity extends CONTROLHOMEActivity {
+
+    private MqttCallback callback;
+    private MqttAsyncClient asyncClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -25,39 +32,50 @@ public class MainActivity extends CONTROLHOMEActivity {
         initAcitivy();
         setLayout();
     }
-
-    private ImageButton mImgBtnContoldv;
+    private ToggleButton mImgTogContoldv;
 
     @Override
     public void initAcitivy() {
-        Log.d("test","success");
-        mImgBtnContoldv = (ImageButton) findViewById(R.id.btn_device);
+        mImgTogContoldv = (ToggleButton) findViewById(R.id.toggle_tv);
     }
 
     @Override
     public void setLayout() {
-        mImgBtnContoldv.setOnClickListener(new View.OnClickListener() {
+        mImgTogContoldv.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 String TOPIC = "CONTROL";
-                String PAYLOAD = String.format("{\"LED1\":\"ON\"}");
-                String url = "192.168.123.139";
-                if (MQTTUtils.connect(url)) {
-                    publish(TOPIC, PAYLOAD);
-                }
-                else {
-                    Toast.makeText(getApplicationContext(), "Error connecting the server.", Toast.LENGTH_SHORT);
-                }
+                String url = "192.168.123.114";
+                String client="TV";
+                changeStatus(url, TOPIC, client);
             }
         });
     }
+    private void changeStatus(String url, String TOPIC, String mqttClient){
+        if (mImgTogContoldv.isChecked()){
+            mImgTogContoldv.setBackgroundDrawable(getResources().getDrawable(R.drawable.btn_tv_off));
+            String PAYLOAD = String.format("{\"LED1\":\"OFF\"}");
+            if (MQTTUtils.connect(url, mqttClient)) {
+                MQTTUtils.pub(TOPIC, PAYLOAD);
+                if(MQTTUtils.sub("OFF")){
+                    mImgTogContoldv.setChecked(true);
+                    mImgTogContoldv.setBackgroundResource(R.drawable.btn_tv_on);
+                }
+            }
+            else {
+                Toast.makeText(getApplication(), "Error connecting the server.", Toast.LENGTH_SHORT);
+            }
+        }
+        else {
+            mImgTogContoldv.setBackgroundResource(R.drawable.btn_tv_on);
+        }
+    }
 
-    public void publish(String topic, String payload){
+    /*public void publish(String topic, String payload){
         Log.d("test","success2323");
         Toast.makeText(getApplicationContext(), "Connected to the server.", Toast.LENGTH_SHORT);
         LocationManager lm = (LocationManager) getSystemService(LOCATION_SERVICE);
         LocationListener locationListener = new LocationListener() {
-
             @Override
             public void onStatusChanged(String arg0, int arg1, Bundle arg2) {
             }
@@ -80,13 +98,12 @@ public class MainActivity extends CONTROLHOMEActivity {
         }
         if (!lm.isProviderEnabled(provider)) {
         } else {
-                        /*lm.requestSingleUpdate(provider, locationListener, Looper.getMainLooper());
-                        Location location = lm.getLastKnownLocation(provider);*/
+                        *//*lm.requestSingleUpdate(provider, locationListener, Looper.getMainLooper());
+                        Location location = lm.getLastKnownLocation(provider);*//*
             MQTTUtils.pub(topic, payload);
         }
         Toast.makeText(getApplicationContext(), "Connected to the server.", Toast.LENGTH_SHORT);
-    }
-
+    }*/
 
 
     @Override
@@ -111,3 +128,4 @@ public class MainActivity extends CONTROLHOMEActivity {
         return super.onOptionsItemSelected(item);
     }
 }
+

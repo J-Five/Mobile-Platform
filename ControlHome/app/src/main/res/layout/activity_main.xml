@@ -1,29 +1,66 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="fill_parent"
-    android:layout_height="fill_parent"
-    android:background="@android:color/darker_gray"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_main"
     android:orientation="vertical"
     android:weightSum="1">
 
     <LinearLayout
         android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:layout_gravity="center"
-        android:layout_weight="0.5">
+        android:layout_height="0dp"
+        android:layout_weight="0.1"></LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:layout_margin="10dp"
+        android:layout_weight="0.7"
+        android:background="@drawable/main_base"
+        android:orientation="vertical"
+        android:weightSum="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="0.5"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:weightSum="1">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0.5"
+                android:gravity="center">
+
+                <ToggleButton
+                    android:id="@+id/toggle_tv"
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    android:background="@drawable/btn_tv_on"
+                    android:textOff=""
+                    android:textOn=""/>
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0.5"
+                android:gravity="center">
+
+                <!--<ImageButton
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    android:background="@drawable/btn_tv_on" />-->
+
+            </LinearLayout>
+        </LinearLayout>
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:layout_gravity="center"
-        android:layout_weight="0.5">
-
-        <ImageButton
-            android:id="@+id/btn_device"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/btn_device" />
-
-    </LinearLayout>
+        android:layout_height="0dp"
+        android:layout_weight="0.1"></LinearLayout>
 
 </LinearLayout>
