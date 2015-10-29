@@ -1,38 +1,28 @@
-package com.seojunkyo.soma.controlhome.Activity;
+package com.seojunkyo.soma.controlhome.activity;
 
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Configuration;
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
-import android.media.Image;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
-import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
-import android.os.Looper;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
 import com.seojunkyo.soma.controlhome.R;
 import com.seojunkyo.soma.controlhome.ui.CONTROLHOMEActivity;
+import com.seojunkyo.soma.controlhome.util.DeviceList;
 import com.seojunkyo.soma.controlhome.util.MQTTUtils;
 
 import org.eclipse.paho.client.mqttv3.IMqttAsyncClient;
@@ -40,19 +30,25 @@ import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.IMqttToken;
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
-import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.eclipse.paho.client.mqttv3.MqttSecurityException;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
-import org.json.JSONException;
 import org.json.JSONObject;
-import org.json.JSONStringer;
 
-public class MainActivity extends CONTROLHOMEActivity {
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 
+public class ControlActivity extends CONTROLHOMEActivity {
+
+    public enum DEVICE{
+        LED,
+        HUMI,
+        RADIO
+    };
     public ConnectivityManager mConnMan;
+    public static String server;
     private static final String TAG = "MQTTService";
     private volatile IMqttAsyncClient mqttClient;
     private boolean hasWifi = false;
@@ -60,12 +56,11 @@ public class MainActivity extends CONTROLHOMEActivity {
     private String deviceId;
     private Context anoactivity;
     private Thread thread;
-    MQTTBroadcastReceiver mMqttReceiver = new MQTTBroadcastReceiver();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_control);
 
         IntentFilter intentf = new IntentFilter();
         intentf.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
@@ -77,102 +72,90 @@ public class MainActivity extends CONTROLHOMEActivity {
         setLayout();
     }
 
-    private ToggleButton mImgTogContoldv;
-    private String server;
-    private String subTOPIC;
+    private ToggleButton mImgTogContolLED;
+    private ToggleButton mImgTogContolTV;
+    //private String subTOPIC;
+    private String[] subTOPIC=new String[4];
     private String pubTOPIC;
-    private ImageButton mBtnSetting;
-    private ImageButton mBtnConnect;
+    ArrayList<DeviceList> deviceItem;
 
     @Override
     public void initAcitivy() {
-        mImgTogContoldv = (ToggleButton) findViewById(R.id.toggle_tv);
-        mBtnSetting = (ImageButton) findViewById(R.id.setting);
-        mBtnConnect = (ImageButton) findViewById(R.id.connect);
 
-        //server = "swhomegateway.dyndns.org";
-        subTOPIC = "STATUS";
-        //server = "172.16.100.62";
-        server = "192.168.0.73";
+        MQTTUtils.pub("WHOLESYNC", String.format("{\"CONTROLLER\":\"ANDROID\"}"));
+
+        mImgTogContolTV = (ToggleButton) findViewById(R.id.toggle_tv);
+        mImgTogContolLED = (ToggleButton) findViewById(R.id.toggle_LED);
+        deviceItem.add(new DeviceList(mImgTogContolTV, "LED1", "R.drawable.btn_light_on", "R.drawable.btn_light_off"));
+        deviceItem.add(new DeviceList(mImgTogContolLED, "HUMI", "R.drawable.btn_tv_on", "R.drawable.btn_tv_off"));
+        subTOPIC = new String[]{"SYNCDEVICE","SYNCCONTROL","WHOLESYNC","CONTROL"};
         pubTOPIC = "CONTROL";
-
-        mImgTogContoldv.setEnabled(false);
     }
 
     @Override
     public void setLayout() {
-        mBtnConnect.setOnClickListener(new View.OnClickListener() {
+        mImgTogContolLED.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (MQTTUtils.connect(server)) {
-                    Toast.makeText(getApplicationContext(), "연결성공", Toast.LENGTH_SHORT).show();
-                    mImgTogContoldv.setEnabled(true);
-                } else {
-                    Toast.makeText(getApplicationContext(), "연결실패", Toast.LENGTH_SHORT).show();
-                    mImgTogContoldv.setEnabled(false);
-                }
+                deviceId = "LED";
+                setClientID(deviceId);
+                publish(mImgTogContolLED, pubTOPIC);
+
             }
         });
-        mImgTogContoldv.setOnClickListener(new View.OnClickListener() {
+
+        mImgTogContolTV.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 deviceId = "TV";
                 setClientID(deviceId);
-                publish(pubTOPIC);
-            }
-        });
-        mBtnSetting.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Dialog();
+                publish(mImgTogContolTV, pubTOPIC);
             }
         });
     }
 
-    private void publish(String pubTOPIC) {
-        if (mImgTogContoldv.isChecked()) {
-            mImgTogContoldv.setBackgroundResource(R.drawable.btn_tv_off);
+    private void publish(ToggleButton BTN, String pubTOPIC) {
+        if (mImgTogContolLED.isChecked()) {
+            mImgTogContolLED.setBackgroundResource(R.drawable.btn_light_off);
             String PAYLOAD = String.format("{\"CONTROLLER\":\"ANDROID\", \"TARGET\":\"LED1\", \"COMMAND\":\"OFF\"}");
             MQTTUtils.pub(pubTOPIC, PAYLOAD);
-        } else {
-            mImgTogContoldv.setBackgroundResource(R.drawable.btn_tv_on);
+        } else if (!mImgTogContolLED.isChecked()) {
+            mImgTogContolLED.setBackgroundResource(R.drawable.btn_light_on);
             String PAYLOAD = String.format("{\"CONTROLLER\":\"ANDROID\", \"TARGET\":\"LED1\", \"COMMAND\":\"ON\"}");
             MQTTUtils.pub(pubTOPIC, PAYLOAD);
         }
+        if (mImgTogContolTV.isChecked()) {
+            mImgTogContolTV.setBackgroundResource(R.drawable.btn_tv_off);
+            String PAYLOAD = String.format("{\"CONTROLLER\":\"ANDROID\", \"TARGET\":\"HUMI\", \"COMMAND\":\"OFF\"}");
+            MQTTUtils.pub(pubTOPIC, PAYLOAD);
+        } else if (!mImgTogContolTV.isChecked()){
+            mImgTogContolTV.setBackgroundResource(R.drawable.btn_tv_on);
+            String PAYLOAD = String.format("{\"CONTROLLER\":\"ANDROID\", \"TARGET\":\"HUMI\", \"COMMAND\":\"PUSH\"}");
+            MQTTUtils.pub(pubTOPIC, PAYLOAD);
+        }
     }
 
-    public void changeStatus(String STATUS){
-        if(STATUS.equals("OFF")){
-            mImgTogContoldv.setBackgroundResource(R.drawable.btn_tv_off);
-        }
-        else if(STATUS.equals("ON")){
-            mImgTogContoldv.setBackgroundResource(R.drawable.btn_tv_on);
-        }
-    }
-    private void Dialog(){
-        AlertDialog.Builder alert = new AlertDialog.Builder(this);
+    public void changeStatus(String payload) throws Exception{
+        JSONObject subObject = new JSONObject(payload);
+        String DEVICE = subObject.getString("DEVICE");
+        String STATUS = subObject.getString("STATUS");
 
-        alert.setTitle("주소를 입력하세요");
-
-        final EditText name = new EditText(this);
-        alert.setView(name);
-
-        alert.setPositiveButton("ok", new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int whichButton) {
-                server = name.getText().toString();
-                if (MQTTUtils.connect(server)) {
-                    Toast.makeText(getApplicationContext(), "재연결성공", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(getApplicationContext(), "연결실패", Toast.LENGTH_SHORT).show();
+        switch(DEVICE){
+            case "LED1":
+                if (STATUS.equals("OFF")) {
+                        mImgTogContolLED.setBackgroundResource(R.drawable.btn_light_off);
+                    } else if (STATUS.equals("ON")) {
+                        mImgTogContolLED.setBackgroundResource(R.drawable.btn_light_on);
                 }
-            }
-        });
-        alert.setNegativeButton("no", new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int whichButton) {
-            }
-        });
-
-        alert.show();
+                break;
+            case "HUMI":
+                if (STATUS.equals("OFF")) {
+                    mImgTogContolTV.setBackgroundResource(R.drawable.btn_tv_off);
+                } else if (STATUS.equals("ON")) {
+                    mImgTogContolTV.setBackgroundResource(R.drawable.btn_tv_on);
+                }
+                break;
+        }
     }
 
     public class MQTTBroadcastReceiver extends BroadcastReceiver {
@@ -182,7 +165,7 @@ public class MainActivity extends CONTROLHOMEActivity {
             /*Bundle bundle = intent.getExtras();
             String server = bundle.getString("server");
             String server = "192.168.56.1";*/
-            Log.d(TAG, server);
+            Log.d("server: ",server);
 
             boolean hasConnectivity = false;
             boolean hasChanged = false;
@@ -220,17 +203,18 @@ public class MainActivity extends CONTROLHOMEActivity {
             }
         }
 
-        private void doConnect(String server, String subTOPIC) {
-            Log.d(TAG, "doConnect()");
+        private void doConnect(String server, String[] subTOPIC) {
             IMqttToken token;
             MqttConnectOptions options = new MqttConnectOptions();
             options.setCleanSession(true);
             try {
+                Log.d(TAG, "doConnect()");
                 mqttClient = new MqttAsyncClient("tcp://" + server + ":1883", deviceId, new MemoryPersistence());
                 token = mqttClient.connect();
                 token.waitForCompletion(3500);
                 mqttClient.setCallback(new MqttEventCallback());
-                token = mqttClient.subscribe(subTOPIC, 0);
+                for(int i=0; i<subTOPIC.length; i++)
+                    token = mqttClient.subscribe(subTOPIC[i], 0);
                 token.waitForCompletion(5000);
             } catch (MqttSecurityException e) {
                 e.printStackTrace();
@@ -276,10 +260,8 @@ public class MainActivity extends CONTROLHOMEActivity {
                         try {
                             String payload = new String(msg.getPayload());
                             //String payload = "{\"CONTROL\":\"ANDROID\"}";
-                            JSONObject subObject = new JSONObject(payload);
-                            String devName = subObject.getString("LED1");
-                            changeStatus(devName);
-                            Toast.makeText(getApplicationContext(), devName, Toast.LENGTH_LONG).show();
+                            changeStatus(payload);
+                            Toast.makeText(getBaseContext(), "success", Toast.LENGTH_LONG).show();
                         } catch (Exception e) {
                             Log.d(TAG, "예외 발생 =" + e);
                         }
@@ -287,11 +269,10 @@ public class MainActivity extends CONTROLHOMEActivity {
                 });
             }
         }
-        /*@Override
         public void onConfigurationChanged(Configuration newConfig) {
             Log.d(TAG, "onConfigurationChanged()");
             android.os.Debug.waitForDebugger();
-            super.onConfigurationChanged(newConfig);
+            onConfigurationChanged(newConfig);
         }
 
         public String getThread() {
@@ -301,7 +282,7 @@ public class MainActivity extends CONTROLHOMEActivity {
         public IBinder onBind(Intent intent) {
             Log.i(TAG, "onBind called");
             return null;
-        }*/
+        }
     }
 
     private void setClientID(String id) {
